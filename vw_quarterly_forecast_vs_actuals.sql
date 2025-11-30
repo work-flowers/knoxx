@@ -1,4 +1,4 @@
--- CREATE OR REPLACE VIEW Zapier.quarterly_forecast_vs_actuals AS
+CREATE OR REPLACE VIEW Zapier.quarterly_forecast_vs_actuals AS
 
 WITH base AS (
   SELECT DISTINCT
@@ -50,12 +50,37 @@ actuals AS (
   SELECT
     sd.customerid,
     sd.customername,
-    today,
+    sd.today,
     SUM(CASE WHEN sd.txndate BETWEEN dr.current_fq_start AND dr.current_fq_end THEN sd.amt ELSE 0 END) AS current_quarter_actual,
     SUM(CASE WHEN sd.txndate BETWEEN dr.prior_fq_start AND dr.prior_fq_end THEN sd.amt ELSE 0 END) AS prior_quarter_actual
   FROM `knoxx-foods-451311.Dashboards.Reporting_Sales_Dashboard` AS sd
   CROSS JOIN dateref AS dr
   GROUP BY 1,2,3
+),
+
+forecasts AS (
+	SELECT
+		fe.customer_id AS customerid,
+		fe.customername,
+		SUM(CASE WHEN fe.forecast_month BETWEEN dr.current_fq_start AND dr.current_fq_end THEN fe.forecast_qty ELSE 0 END) AS current_quarter_forecast_qty,
+		SUM(CASE WHEN fe.forecast_month BETWEEN dr.current_fq_start AND dr.current_fq_end THEN fe.forecast_revenue ELSE 0 END) AS current_quarter_forecast_revenue,
+		SUM(CASE WHEN fe.forecast_month BETWEEN dr.prior_fq_start AND dr.prior_fq_end THEN fe.forecast_qty ELSE 0 END) AS prior_quarter_forecast_qty,
+		SUM(CASE WHEN fe.forecast_month BETWEEN dr.prior_fq_start AND dr.prior_fq_end THEN fe.forecast_revenue ELSE 0 END) AS prior_quarter_forecast_revenue
+	FROM `Forecast`.`Forecast-EBR` AS fe
+	CROSS JOIN dateref AS dr
+	GROUP BY 1,2
 )
 
-SELECT * FROM actuals
+SELECT 
+	COALESCE(a.customerid, f.customerid)  AS customerid,
+	COALESCE(a.customername, f.customername) AS customername,
+	COALESCE(a.current_quarter_actual, 0) AS current_quarter_actual,
+	COALESCE(a.prior_quarter_actual, 0) AS prior_quarter_actual,
+	COALESCE(f.current_quarter_forecast_qty, 0) AS current_quarter_forecast_qty,
+	COALESCE(f.current_quarter_forecast_revenue, 0) AS current_quarter_forecast_revenue,
+	COALESCE(f.prior_quarter_forecast_qty, 0) AS prior_quarter_forecast_qty,
+	COALESCE(f.prior_quarter_forecast_revenue, 0) AS prior_quarter_forecast_revenue
+
+FROM actuals AS a
+FULL OUTER JOIN forecasts AS f
+	USING (customerid)
