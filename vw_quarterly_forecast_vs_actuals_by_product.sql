@@ -42,7 +42,15 @@ dateref AS (
         INTERVAL 1 DAY
       ),
       INTERVAL 6 MONTH
-    ) AS prior_fq_end
+    ) AS prior_fq_end,
+    
+    -- prior fiscal quarter label, e.g. 'Q3 2025'
+    CONCAT(
+      'Q',
+      CAST(EXTRACT(QUARTER FROM prev_cal_q_start) AS STRING),
+      ' ',
+      CAST(EXTRACT(YEAR FROM prev_cal_q_start) + 1 AS STRING)
+    ) AS prior_fq_label
   FROM q
 ),
 
@@ -52,11 +60,12 @@ actuals AS (
     sd.customername,
     sd.itemname,
     sd.today,
+    dr.prior_fq_label AS review_period,
     SUM(CASE WHEN sd.txndate BETWEEN dr.current_fq_start AND dr.current_fq_end THEN sd.qtykg ELSE 0 END) AS current_quarter_actual_qtykg,
     SUM(CASE WHEN sd.txndate BETWEEN dr.prior_fq_start AND dr.prior_fq_end THEN sd.qtykg ELSE 0 END) AS prior_quarter_actual_qtykg
   FROM `knoxx-foods-451311.Dashboards.Reporting_Sales_Dashboard` AS sd
   CROSS JOIN dateref AS dr
-  GROUP BY 1,2,3,4
+  GROUP BY 1,2,3,4,5
 ),
 
 forecasts AS (
@@ -77,6 +86,7 @@ joined AS (
 		a.customerid,
 		a.customername,
 		a.itemname,
+		a.review_period,
 		COALESCE(a.current_quarter_actual_qtykg, 0) AS current_quarter_actual_qtykg,
 		COALESCE(a.prior_quarter_actual_qtykg, 0) AS prior_quarter_actual_qtykg,
 		COALESCE(f.current_quarter_forecast_qtykg, 0) AS current_quarter_forecast_qtykg,
