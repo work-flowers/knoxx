@@ -1,0 +1,20 @@
+{
+  "freshlineOrderUrl": "https://my.knoxxfoods.com/admin/orders/ordr_01KFC8H4NRJH7HYKH4ZXF5EFKK/edit",
+  "lineItems": [
+    {
+      "sku": "RIC3001",
+      "lot": "247",
+      "expiry": "2028-09-03"
+    },
+    {
+      "sku": "TOMC1005",
+      "lot": "251",
+      "expiry": "2027-06-15"
+    },
+    {
+      "sku": "TOMI2006",
+      "lot": "198",
+      "expiry": "2027-11-22"
+    }
+  ]
+}

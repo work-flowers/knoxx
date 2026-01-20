@@ -1,0 +1,22 @@
+{
+  "name": "freshline-line-item-updater",
+  "version": "1.0.0",
+  "description": "Apify actor to update Freshline line item vendor notes with lot numbers and expiry dates",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "apify": "^3.2.0",
+    "crawlee": "^3.11.0",
+    "dotenv": "^17.2.3",
+    "puppeteer": "^24.35.0"
+  },
+  "author": "Knoxx Foods",
+  "license": "MIT"
+}

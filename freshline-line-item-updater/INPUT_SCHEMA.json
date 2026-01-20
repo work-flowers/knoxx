@@ -1,0 +1,56 @@
+{
+  "title": "Freshline Line Item Updater Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "freshlineOrderUrl": {
+      "title": "Freshline Order URL",
+      "type": "string",
+      "description": "The full URL to the Freshline order edit page (e.g., https://my.knoxxfoods.com/admin/orders/ordr_xxx/edit)",
+      "editor": "textfield",
+      "pattern": "^https?://.*",
+      "prefill": "https://my.knoxxfoods.com/admin/orders/ordr_01KFC8H4NRJH7HYKH4ZXF5EFKK/edit"
+    },
+    "lineItems": {
+      "title": "Line Items to Update",
+      "type": "array",
+      "description": "Array of line items with SKU, lot number, and expiry date",
+      "editor": "json",
+      "minItems": 1,
+      "prefill": [
+        {
+          "sku": "RIC3001",
+          "lot": "247",
+          "expiry": "2028-09-03"
+        },
+        {
+          "sku": "TOMC1005",
+          "lot": "251",
+          "expiry": "2027-06-15"
+        }
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string",
+            "title": "SKU",
+            "description": "Product SKU code to match (e.g., RIC3001, TOMC1005)"
+          },
+          "lot": {
+            "type": "string",
+            "title": "Lot Number",
+            "description": "Lot number to add to vendor notes"
+          },
+          "expiry": {
+            "type": "string",
+            "title": "Expiry Date",
+            "description": "Best before date (BBD) in YYYY-MM-DD format"
+          }
+        },
+        "required": ["sku", "lot", "expiry"]
+      }
+    }
+  },
+  "required": ["freshlineOrderUrl", "lineItems"]
+}
