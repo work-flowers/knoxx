@@ -2,8 +2,8 @@
   "actorSpecification": 1,
   "name": "freshline-line-item-updater",
   "title": "Freshline Line Item Updater",
-  "version": "1.0.0",
+  "version": "1.0",
   "description": "Automates updating line item vendor notes in Freshline with lot numbers and expiry dates from Carton Cloud",
   "dockerfile": "./Dockerfile",
-  "input": "./INPUT_SCHEMA.json"
+  "input": "../INPUT_SCHEMA.json"
 }

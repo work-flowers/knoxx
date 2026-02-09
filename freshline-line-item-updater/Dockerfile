@@ -5,7 +5,7 @@ COPY --chown=myuser:myuser package*.json ./
 
 # Install dependencies
 RUN npm --quiet set progress=false \
-    && npm ci --only=prod --no-optional \
+    && npm ci --omit=dev \
     && echo "Installed NPM packages:" \
     && (npm list --depth=0 || true) \
     && echo "Node.js version:" \
