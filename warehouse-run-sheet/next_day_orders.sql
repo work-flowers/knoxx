@@ -26,6 +26,9 @@ customers AS (
 
 SELECT 
 	o.order_number,
+	o.id AS order_id,
+	o.customer_id,
+	o.state,
 	cus.name AS customer_name,
 	cd.value AS pallet_status,
 	o.internal_notes AS internal_order_notes,
@@ -52,5 +55,6 @@ LEFT JOIN custom_data AS cd
 	AND cd.key = 'pallet-status'
 WHERE
 	1 = 1 
--- 	AND o.fulfillment_date = DATE_ADD(CURRENT_DATE, INTERVAL 1 DAY)
-	AND o.state ='confirmed'
+	AND o.customer_id NOT IN ('buyr_01K3G5PRDX1T039T5ADTP87YFR')
+	AND o.fulfillment_date = DATE_ADD(CURRENT_DATE, INTERVAL 1 DAY)
+-- 	AND o.state ='confirmed'
