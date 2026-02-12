@@ -50,9 +50,12 @@ const deliver = {
   }
 };
 
-// Only add requiredDate if valid YYYY-MM-DD format
-if (bundle.inputData.required_date && /^\d{4}-\d{2}-\d{2}$/.test(bundle.inputData.required_date)) {
-  deliver.requiredDate = bundle.inputData.required_date;
+// Only add requiredDate if provided — extract YYYY-MM-DD if full datetime is passed
+if (bundle.inputData.required_date) {
+  const dateMatch = bundle.inputData.required_date.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (dateMatch) {
+    deliver.requiredDate = dateMatch[1];
+  }
 }
 
 // Build main body
@@ -76,11 +79,14 @@ if (bundle.inputData.warehouse) {
   body.warehouse = { "id": bundle.inputData.warehouse };
 }
 
-// Only add collect.requiredDate if provided
-if (bundle.inputData.required_ship_date && /^\d{4}-\d{2}-\d{2}$/.test(bundle.inputData.required_ship_date)) {
-  body.details.collect = {
-    "requiredDate": bundle.inputData.required_ship_date
-  };
+// Only add collect.requiredDate if provided — extract YYYY-MM-DD if full datetime is passed
+if (bundle.inputData.required_ship_date) {
+  const shipDateMatch = bundle.inputData.required_ship_date.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (shipDateMatch) {
+    body.details.collect = {
+      "requiredDate": shipDateMatch[1]
+    };
+  }
 }
 
 const options = {
