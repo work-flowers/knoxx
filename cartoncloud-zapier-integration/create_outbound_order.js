@@ -77,9 +77,9 @@ if (bundle.inputData.warehouse) {
 }
 
 // Only add collect.requiredDate if provided
-if (bundle.inputData.required_ship_date && /^\d{4}-\d{2}-\d{2}$/.test(bundle.inputData.required_date)) {
+if (bundle.inputData.required_ship_date && /^\d{4}-\d{2}-\d{2}$/.test(bundle.inputData.required_ship_date)) {
   body.details.collect = {
-    "requiredDate": bundle.inputData.required_date
+    "requiredDate": bundle.inputData.required_ship_date
   };
 }
 
