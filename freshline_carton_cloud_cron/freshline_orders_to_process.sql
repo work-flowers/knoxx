@@ -27,6 +27,7 @@ customers AS (
 SELECT 
 	o.id AS order_id,
 	o.order_number,
+	cus.name AS customer_name,
 	o.state,
 	o.fulfillment_date,
 	o.fulfillment_type,
