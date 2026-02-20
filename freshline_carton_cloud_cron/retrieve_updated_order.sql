@@ -10,6 +10,16 @@ WITH sales_order AS (
 	QUALIFY ROW_NUMBER() OVER(PARTITION BY id ORDER BY updated_at DESC) = 1
 ),
 
+chep AS (
+	SELECT
+		owner_id AS customer_id,
+		JSON_VALUE(value) AS chep_status
+	FROM Knoxx_Freshline.freshline_custom_data
+	WHERE 
+		key = 'pallet-status'
+	QUALIFY ROW_NUMBER() OVER(PARTITION BY id ORDER BY updated_at DESC) = 1
+),
+
 orders AS (
 	SELECT *
 	FROM Knoxx_Freshline.freshline_orders
@@ -22,16 +32,6 @@ customers AS (
 	FROM Knoxx_Freshline.freshline_customers
 	QUALIFY ROW_NUMBER() OVER(PARTITION BY id ORDER BY updated_at DESC) = 1
 
-),
-
-chep AS (
-	SELECT
-		owner_id AS customer_id,
-		JSON_VALUE(value) AS chep_status
-	FROM Knoxx_Freshline.freshline_custom_data
-	WHERE 
-		key = 'pallet-status'
-	QUALIFY ROW_NUMBER() OVER(PARTITION BY id ORDER BY updated_at DESC) = 1
 )
 
 SELECT 
@@ -58,7 +58,7 @@ SELECT
 	COALESCE(o.contact_name, cus.billing_contact_name, cus.name) AS contact_name,
 	COALESCE(o.contact_email, cus.billing_contact_email) AS contact_email
 FROM orders AS o 
-LEFT JOIN sales_order AS so
+INNER JOIN sales_order AS so
 	ON o.id = so.order_id
 LEFT JOIN customers AS cus
 	ON o.customer_id = cus.id
@@ -66,7 +66,3 @@ LEFT JOIN chep
 	USING(customer_id)
 WHERE
 	1 = 1
-	AND o.state = 'open'
-	AND DATE_SUB(o.fulfillment_date, INTERVAL 3 DAY) <= CURRENT_DATE
-	AND o.fulfillment_date >= CURRENT_DATE
-	AND so.order_id IS NULL
