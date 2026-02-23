@@ -66,7 +66,7 @@ LEFT JOIN chep
 	USING(customer_id)
 WHERE
 	1 = 1
-	AND o.state = 'open'
-	AND DATE_SUB(o.fulfillment_date, INTERVAL 3 DAY) <= CURRENT_DATE
+	AND o.state = 'confirmed'
+	AND DATE_SUB(o.fulfillment_date, INTERVAL 1 DAY) <= CURRENT_DATE
 	AND o.fulfillment_date >= CURRENT_DATE
 	AND so.order_id IS NULL
