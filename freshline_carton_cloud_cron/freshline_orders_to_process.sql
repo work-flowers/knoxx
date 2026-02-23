@@ -6,8 +6,7 @@ WITH sales_order AS (
 	FROM Knoxx_Freshline.freshline_custom_data
 	WHERE 
 		key = 'carton-cloud-sales-order-id'
-		AND COALESCE(JSON_VALUE(value, '$.sales_order.id'), JSON_VALUE(value, '$.sales_order.uuid')) IS NOT NULL
-	QUALIFY ROW_NUMBER() OVER(PARTITION BY id ORDER BY updated_at DESC) = 1
+	QUALIFY ROW_NUMBER() OVER(PARTITION BY owner_id ORDER BY updated_at DESC) = 1
 ),
 
 orders AS (
@@ -60,6 +59,7 @@ SELECT
 FROM orders AS o 
 LEFT JOIN sales_order AS so
 	ON o.id = so.order_id
+	AND so.sales_order_id IS NOT NULL
 LEFT JOIN customers AS cus
 	ON o.customer_id = cus.id
 LEFT JOIN chep
