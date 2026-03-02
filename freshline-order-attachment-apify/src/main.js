@@ -10,11 +10,31 @@ await Actor.init();
 const input = await Actor.getInput();
 
 // Validate input
-if (!input?.freshlineOrderUrl || !input?.files?.length) {
-    throw new Error('Invalid input: freshlineOrderUrl and files (non-empty array) are required');
+if (!input?.freshlineOrderUrl || !input?.files) {
+    throw new Error('Invalid input: freshlineOrderUrl and files are required');
 }
 
-const { files } = input;
+// Accept files as either an array or a comma-separated string
+const rawFiles = Array.isArray(input.files)
+    ? input.files
+    : input.files.split(',').map(s => s.trim()).filter(Boolean);
+
+if (rawFiles.length === 0) {
+    throw new Error('Invalid input: files must contain at least one URL');
+}
+
+// Accept names as either an array or a comma-separated string (optional)
+const rawNames = input.names
+    ? (Array.isArray(input.names)
+        ? input.names
+        : input.names.split(',').map(s => s.trim()))
+    : [];
+
+// Pair URLs with names by index — name is null if not provided
+const files = rawFiles.map((url, i) => ({
+    url: url.trim(),
+    name: rawNames[i]?.trim() || null,
+}));
 
 // Ensure we use the order view URL (not edit) — attachments are on the view page
 const freshlineOrderUrl = input.freshlineOrderUrl.replace(/\/edit\/?$/, '');
@@ -32,8 +52,8 @@ log.info('Starting Freshline Order Attachment', {
     fileCount: files.length,
 });
 
-// Download files from URLs to /tmp/
-async function downloadFile(url) {
+// Download a file from URL to /tmp/ with optional custom name
+async function downloadFile(url, customName) {
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
@@ -41,9 +61,8 @@ async function downloadFile(url) {
 
     const buffer = Buffer.from(await response.arrayBuffer());
 
-    // Derive filename from URL path, fallback to 'attachment'
-    let filename = basename(new URL(url).pathname) || 'attachment';
-    filename = decodeURIComponent(filename);
+    // Use custom name if provided, otherwise derive from URL
+    let filename = customName || decodeURIComponent(basename(new URL(url).pathname)) || 'attachment';
 
     const filepath = `/tmp/${filename}`;
     await writeFile(filepath, buffer);
@@ -54,8 +73,8 @@ async function downloadFile(url) {
 // Download all files before starting the browser
 log.info('Downloading files...');
 const downloadedPaths = [];
-for (const fileUrl of files) {
-    const path = await downloadFile(fileUrl);
+for (const { url, name } of files) {
+    const path = await downloadFile(url, name);
     downloadedPaths.push(path);
 }
 log.info(`All ${downloadedPaths.length} files downloaded`);
@@ -191,7 +210,7 @@ const crawler = new PuppeteerCrawler({
                 success: true,
                 orderUrl: freshlineOrderUrl,
                 filesUploaded: files.length,
-                fileUrls: files,
+                files,
                 timestamp: new Date().toISOString(),
             };
 
@@ -215,7 +234,7 @@ const crawler = new PuppeteerCrawler({
                 success: false,
                 error: error.message,
                 orderUrl: freshlineOrderUrl,
-                fileUrls: files,
+                files,
                 timestamp: new Date().toISOString(),
             });
 

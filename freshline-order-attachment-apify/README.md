@@ -20,6 +20,10 @@ Given a Freshline order URL and one or more file URLs, this actor:
   "files": [
     "https://example.com/invoice.pdf",
     "https://example.com/photo.png"
+  ],
+  "names": [
+    "Invoice-2026-001.pdf",
+    "Product Photo.png"
   ]
 }
 ```
@@ -27,7 +31,8 @@ Given a Freshline order URL and one or more file URLs, this actor:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `freshlineOrderUrl` | string | Yes | URL to the Freshline order (view or edit — `/edit` is stripped automatically) |
-| `files` | string[] | Yes | Array of public URLs to files to download and attach |
+| `files` | string or string[] | Yes | Array or comma-separated list of public URLs to files to download and attach |
+| `names` | string or string[] | No | Array or comma-separated list of filenames, matched by position to file URLs. If omitted, filenames are derived from the URLs. |
 
 **Supported file types:** PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, JPG, JPEG, PNG, GIF, WEBP, AVIF, HEIC
 
@@ -102,7 +107,8 @@ In your Zapier workflow, add a **Webhooks by Zapier** action:
   ```json
   {
     "freshlineOrderUrl": "{{order_url}}",
-    "files": ["{{file_url_1}}", "{{file_url_2}}"]
+    "files": "{{file_url_1}}, {{file_url_2}}",
+    "names": "{{file_name_1}}, {{file_name_2}}"
   }
   ```
 
