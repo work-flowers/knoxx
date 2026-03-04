@@ -67,17 +67,19 @@ async function downloadFile(url, customName) {
     const filepath = `/tmp/${filename}`;
     await writeFile(filepath, buffer);
     log.info(`Downloaded: ${filename} (${buffer.length} bytes)`);
-    return filepath;
+    return { filepath, bytes: buffer.length };
 }
 
 // Download all files before starting the browser
 log.info('Downloading files...');
 const downloadedPaths = [];
+let totalBytes = 0;
 for (const { url, name } of files) {
-    const path = await downloadFile(url, name);
-    downloadedPaths.push(path);
+    const { filepath, bytes } = await downloadFile(url, name);
+    downloadedPaths.push(filepath);
+    totalBytes += bytes;
 }
-log.info(`All ${downloadedPaths.length} files downloaded`);
+log.info(`All ${downloadedPaths.length} files downloaded (${Math.round(totalBytes / 1024)} KB total)`);
 
 // Create Puppeteer crawler
 const crawler = new PuppeteerCrawler({
@@ -176,9 +178,16 @@ const crawler = new PuppeteerCrawler({
             await fileChooser.accept(downloadedPaths);
             log.info('Files accepted via file chooser');
 
-            // Wait for LiveView to finish uploading the file(s) via websocket
-            // The progress bar completes and the Upload button becomes enabled
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            // Wait for LiveView to upload the file(s) via websocket.
+            // The UI provides no visual completion indicator — the Upload button stays enabled
+            // and the Cancel button stays visible throughout. So we estimate the wait time
+            // based on total file size, assuming a conservative 500 KB/s upload speed with 2x safety margin.
+            const totalMB = totalBytes / (1024 * 1024);
+            const waitSeconds = Math.max(10, Math.ceil(totalMB / 0.5 * 2));
+            const waitMs = Math.min(waitSeconds * 1000, 120000);
+            log.info(`Waiting ${waitSeconds}s for file transfer (~${totalMB.toFixed(1)} MB at conservative rate)...`);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            log.info('File transfer wait complete');
 
             log.info('File upload wait complete, clicking Upload button...');
 
