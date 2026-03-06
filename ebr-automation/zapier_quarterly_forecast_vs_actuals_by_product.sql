@@ -44,7 +44,7 @@ forecasts AS (
     	dr.prior_quarter_label,
 		SUM(CASE WHEN fe.forecast_month BETWEEN dr.current_quarter_start AND dr.current_quarter_end THEN fe.forecast_qtykg ELSE 0 END) AS current_quarter_forecast_qtykg,
 		SUM(CASE WHEN fe.forecast_month BETWEEN dr.prior_quarter_start AND dr.prior_quarter_end THEN fe.forecast_qtykg ELSE 0 END) AS prior_quarter_forecast_qtykg
-	FROM `Forecast`.`Forecast-EBR` AS fe
+	FROM `Forecast`.`Forecast-EBR-Final` AS fe
 	CROSS JOIN dateref AS dr
 	GROUP BY 1,2,3,4,5
 ),
