@@ -1,6 +1,7 @@
 WITH sales_order AS (
 	SELECT
 		owner_id AS order_id,
+		deleted_at,
 	  	JSON_VALUE(value, '$.sales_order.id')   AS sales_order_id,
   		JSON_VALUE(value, '$.sales_order.uuid') AS sales_order_uuid
 	FROM Knoxx_Freshline.freshline_custom_data
@@ -60,6 +61,7 @@ FROM orders AS o
 LEFT JOIN sales_order AS so
 	ON o.id = so.order_id
 	AND so.sales_order_id IS NOT NULL
+	AND so.deleted_at IS NULL
 LEFT JOIN customers AS cus
 	ON o.customer_id = cus.id
 LEFT JOIN chep
