@@ -59,7 +59,6 @@ SELECT
 FROM orders AS o 
 INNER JOIN sales_order AS so
 	ON o.id = so.order_id
-	AND so.order_id IS NULL
 LEFT JOIN customers AS cus
 	ON o.customer_id = cus.id
 LEFT JOIN chep
