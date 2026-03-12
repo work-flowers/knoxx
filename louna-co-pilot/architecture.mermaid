@@ -1,0 +1,35 @@
+graph TD
+    User["Sales Rep"]
+    Coordinator["Louna<br/>(Main Coordinator Agent)"]
+    ZTCust[("Zapier Table:<br/>Quickbook Customers")]
+    ZTProd[("Zapier Table:<br/>Quickbook Products")]
+    Pricing["Pricing Agent"]
+    Invoice["Invoice History Agent"]
+    Logistics["Logistics Agent"]
+    BQ[("BigQuery<br/>knoxx-foods-451311.TempTest")]
+
+    User <-->|Chat| Coordinator
+
+    Coordinator -->|Semantic search:<br/>resolve customer name → ID| ZTCust
+    Coordinator -->|Semantic search:<br/>resolve product name → ID| ZTProd
+
+    Coordinator -->|product_id, customer_id| Pricing
+    Coordinator -->|customer_id, product_id| Invoice
+    Coordinator -->|product_id, container_number| Logistics
+
+    Pricing -->|Cost inputs, RSP,<br/>peer prices, margin check| BQ
+    Invoice -->|Invoice line items,<br/>trends, volumes| BQ
+    Logistics -->|Landed cost, charges,<br/>shipping agreements| BQ
+
+    Pricing -->|Recommendation +<br/>internal flags| Coordinator
+    Invoice -->|History summary| Coordinator
+    Logistics -->|Cost breakdown +<br/>internal flags| Coordinator
+
+    style Coordinator fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    style Pricing fill:#7B68EE,stroke:#5A4FCF,color:#fff
+    style Invoice fill:#7B68EE,stroke:#5A4FCF,color:#fff
+    style Logistics fill:#7B68EE,stroke:#5A4FCF,color:#fff
+    style ZTCust fill:#FF8C00,stroke:#CC7000,color:#fff
+    style ZTProd fill:#FF8C00,stroke:#CC7000,color:#fff
+    style BQ fill:#34A853,stroke:#2D8E47,color:#fff
+    style User fill:#555,stroke:#333,color:#fff

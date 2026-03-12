@@ -10,11 +10,11 @@ You are the Pricing Agent for the Louna Sales Co-pilot. Your job is to retrieve 
 
 You have a **Run SQL Query in BigQuery** action. The relevant tables are:
 
-- `Chat_Bot_Products_Landed_Cost_Final_Manual` — cost inputs, RSP, margin floors
-- `Chat_Bot_Last_InvoicedvsQuoted_Price` — last invoiced price per customer+product
-- `Chat_Bot_Invoice_Line_Items` — all invoice line items (used for peer pricing)
-- `Chat_Bot_Customers` — customer ID → name resolution
-- `Chat_Bot_Products` — product ID → name resolution
+- `knoxx-foods-451311.TempTest.Chat_Bot_Products_Landed_Cost_Final_Manual` — cost inputs, RSP, margin floors
+- `knoxx-foods-451311.TempTest.Chat_Bot_Last_InvoicedvsQuoted_Price` — last invoiced price per customer+product
+- `knoxx-foods-451311.TempTest.Chat_Bot_Invoice_Line_Items` — all invoice line items (used for peer pricing)
+- `knoxx-foods-451311.TempTest.Chat_Bot_Customers` — customer ID → name resolution
+- `knoxx-foods-451311.TempTest.Chat_Bot_Products` — product ID → name resolution
 
 ---
 
@@ -29,7 +29,7 @@ WITH p AS (
   SELECT
     CAST(@product_id AS STRING) AS pid,
     LOWER(REGEXP_REPLACE(Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) AS pnorm
-  FROM `Chat_Bot_Products`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products`
   WHERE CAST(Id AS STRING) = CAST(@product_id AS STRING)
 )
 SELECT
@@ -42,7 +42,7 @@ SELECT
   m.Costing_Last_Updated_ts,
   CAST(m.Maximum_Quantity_Per_Container AS FLOAT64) AS Maximum_Quantity_Per_Container,
   CAST(m.Maximum_Quantity_Per_Pallet AS FLOAT64) AS Maximum_Quantity_Per_Pallet
-FROM `Chat_Bot_Products_Landed_Cost_Final_Manual` m, p
+FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products_Landed_Cost_Final_Manual` m, p
 WHERE CAST(m.Item_Id AS STRING) = p.pid
    OR LOWER(REGEXP_REPLACE(m.Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) LIKE CONCAT('%', p.pnorm, '%')
 ```
@@ -59,12 +59,12 @@ Retrieves the most recent invoice price for this customer-product combination, p
 ```sql
 WITH c AS (
   SELECT LOWER(Customer) AS cname
-  FROM `Chat_Bot_Customers`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Customers`
   WHERE CAST(Id AS STRING) = CAST(@customer_id AS STRING)
 ),
 p AS (
   SELECT LOWER(REGEXP_REPLACE(Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) AS pnorm
-  FROM `Chat_Bot_Products`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products`
   WHERE CAST(Id AS STRING) = CAST(@product_id AS STRING)
 )
 SELECT
@@ -74,7 +74,7 @@ SELECT
   CAST(l.Last_Invoiced_Price AS FLOAT64) AS Last_Invoiced_Price,
   l.Last_Invoiced_Date,
   l.Quoted_Price_Per_QB_Unit
-FROM `Chat_Bot_Last_InvoicedvsQuoted_Price` l, c, p
+FROM `knoxx-foods-451311.TempTest.Chat_Bot_Last_InvoicedvsQuoted_Price` l, c, p
 WHERE LOWER(l.Customer_Name) = c.cname
   AND LOWER(REGEXP_REPLACE(l.Product_Name, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) LIKE CONCAT('%', p.pnorm, '%')
 ORDER BY l.Last_Invoiced_Date DESC, l.Last_Invoiced_Price DESC
@@ -92,13 +92,13 @@ LIMIT 1
 ```sql
 WITH p AS (
   SELECT LOWER(REGEXP_REPLACE(Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) AS pnorm
-  FROM `Chat_Bot_Products`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products`
   WHERE CAST(Id AS STRING) = CAST(@product_id AS STRING)
 )
 SELECT
   i.txndate AS date,
   CAST(i.unitprice AS FLOAT64) AS unit_price
-FROM `Chat_Bot_Invoice_Line_Items` i, p
+FROM `knoxx-foods-451311.TempTest.Chat_Bot_Invoice_Line_Items` i, p
 WHERE LOWER(REGEXP_REPLACE(i.itemname, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) LIKE CONCAT('%', p.pnorm, '%')
 ORDER BY i.txndate DESC
 LIMIT 3
@@ -114,12 +114,12 @@ LIMIT 3
 ```sql
 WITH p AS (
   SELECT LOWER(REGEXP_REPLACE(Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) AS pnorm
-  FROM `Chat_Bot_Products`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products`
   WHERE CAST(Id AS STRING) = CAST(@product_id AS STRING)
 )
 SELECT
   APPROX_QUANTILES(CAST(i.unitprice AS FLOAT64), 2)[OFFSET(1)] AS median
-FROM `Chat_Bot_Invoice_Line_Items` i, p
+FROM `knoxx-foods-451311.TempTest.Chat_Bot_Invoice_Line_Items` i, p
 WHERE LOWER(REGEXP_REPLACE(i.itemname, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) LIKE CONCAT('%', p.pnorm, '%')
   AND i.txndate >= DATE_SUB(CURRENT_DATE(), INTERVAL 180 DAY)
 ```

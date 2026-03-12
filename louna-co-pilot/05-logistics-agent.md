@@ -10,9 +10,9 @@ You are the Logistics Agent for the Louna Sales Co-pilot. Your job is to retriev
 
 You have a **Run SQL Query in BigQuery** action. The relevant tables are:
 
-- `LandedCost` — columns: `container_number`, `Shipping_Agreement`, `Item_Id`, `Item_Name`, `Unit_Name`, `Unit_Price`, `Landed_Cost_Calculated`, `TxnDate`
-- `Pricing_Charges` — columns: `container_number`, `charge_type`, `Amount_Adjusted`
-- `Chat_Bot_Products` — product ID → name resolution
+- `knoxx-foods-451311.TempTest.LandedCost` — columns: `container_number`, `Shipping_Agreement`, `Item_Id`, `Item_Name`, `Unit_Name`, `Unit_Price`, `Landed_Cost_Calculated`, `TxnDate`
+- `knoxx-foods-451311.TempTest.Pricing_Charges` — columns: `container_number`, `charge_type`, `Amount_Adjusted`
+- `knoxx-foods-451311.TempTest.Chat_Bot_Products` — product ID → name resolution
 
 ---
 
@@ -25,7 +25,7 @@ Retrieves the most recent N containers for a product, with charge breakdowns att
 ```sql
 WITH p AS (
   SELECT LOWER(REGEXP_REPLACE(Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) AS pnorm
-  FROM `Chat_Bot_Products`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products`
   WHERE CAST(Id AS STRING) = CAST(@product_id AS STRING)
 ),
 lc AS (
@@ -34,7 +34,7 @@ lc AS (
     CAST(Unit_Price AS FLOAT64) AS Unit_Price,
     CAST(Landed_Cost_Calculated AS FLOAT64) AS Landed_Cost_Calculated,
     TxnDate
-  FROM `LandedCost`, p
+  FROM `knoxx-foods-451311.TempTest.LandedCost`, p
   WHERE CAST(Item_Id AS STRING) = CAST(@product_id AS STRING)
      OR LOWER(REGEXP_REPLACE(Item_Name, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) LIKE CONCAT('%', p.pnorm, '%')
 ),
@@ -55,7 +55,7 @@ charges AS (
       container_number,
       charge_type,
       SUM(CAST(Amount_Adjusted AS FLOAT64)) AS amount
-    FROM `Pricing_Charges`
+    FROM `knoxx-foods-451311.TempTest.Pricing_Charges`
     GROUP BY container_number, charge_type
   )
   SELECT
@@ -91,7 +91,7 @@ SELECT
   CAST(Unit_Price AS FLOAT64) AS Unit_Price,
   CAST(Landed_Cost_Calculated AS FLOAT64) AS Landed_Cost_Calculated,
   TxnDate
-FROM `LandedCost`
+FROM `knoxx-foods-451311.TempTest.LandedCost`
 WHERE container_number = @container_number
 ORDER BY TxnDate DESC, Item_Name
 ```
@@ -111,7 +111,7 @@ WITH agg AS (
     container_number,
     charge_type,
     SUM(CAST(Amount_Adjusted AS FLOAT64)) AS amount
-  FROM `Pricing_Charges`
+  FROM `knoxx-foods-451311.TempTest.Pricing_Charges`
   WHERE container_number = @container_number
   GROUP BY container_number, charge_type
 )
@@ -142,7 +142,7 @@ lc AS (
     container_number,
     Shipping_Agreement,
     TxnDate
-  FROM `LandedCost`, win
+  FROM `knoxx-foods-451311.TempTest.LandedCost`, win
   WHERE TxnDate >= win.start_dt
   GROUP BY pid, Item_Id, Item_Name, container_number, Shipping_Agreement, TxnDate
 ),

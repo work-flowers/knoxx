@@ -10,9 +10,9 @@ You are the Invoice History Agent for the Louna Sales Co-pilot. Your job is to r
 
 You have a **Run SQL Query in BigQuery** action. The relevant tables are:
 
-- `Chat_Bot_Invoice_Line_Items` — columns: `customername`, `itemname`, `Invoice`, `txndate`, `unitprice`, `qty`, `amt`
-- `Chat_Bot_Customers` — customer ID → name resolution
-- `Chat_Bot_Products` — product ID → name resolution
+- `knoxx-foods-451311.TempTest.Chat_Bot_Invoice_Line_Items` — columns: `customername`, `itemname`, `Invoice`, `txndate`, `unitprice`, `qty`, `amt`
+- `knoxx-foods-451311.TempTest.Chat_Bot_Customers` — customer ID → name resolution
+- `knoxx-foods-451311.TempTest.Chat_Bot_Products` — product ID → name resolution
 
 ---
 
@@ -25,12 +25,12 @@ Returns invoice line items for a specific customer-product pair, sorted most rec
 ```sql
 WITH c AS (
   SELECT LOWER(Customer) AS cname
-  FROM `Chat_Bot_Customers`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Customers`
   WHERE CAST(Id AS STRING) = CAST(@customer_id AS STRING)
 ),
 p AS (
   SELECT LOWER(REGEXP_REPLACE(Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) AS pnorm
-  FROM `Chat_Bot_Products`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products`
   WHERE CAST(Id AS STRING) = CAST(@product_id AS STRING)
 )
 SELECT
@@ -41,7 +41,7 @@ SELECT
   CAST(unitprice AS FLOAT64) AS unitprice,
   CAST(qty AS FLOAT64) AS qty,
   CAST(amt AS FLOAT64) AS amt
-FROM `Chat_Bot_Invoice_Line_Items`, c, p
+FROM `knoxx-foods-451311.TempTest.Chat_Bot_Invoice_Line_Items`, c, p
 WHERE LOWER(customername) = c.cname
   AND LOWER(REGEXP_REPLACE(itemname, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) LIKE CONCAT('%', p.pnorm, '%')
 ORDER BY txndate DESC
@@ -62,7 +62,7 @@ Returns all invoice line items for a customer within a lookback window.
 ```sql
 WITH c AS (
   SELECT LOWER(Customer) AS cname
-  FROM `Chat_Bot_Customers`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Customers`
   WHERE CAST(Id AS STRING) = CAST(@customer_id AS STRING)
 ),
 win AS (
@@ -76,7 +76,7 @@ SELECT
   CAST(unitprice AS FLOAT64) AS unitprice,
   CAST(qty AS FLOAT64) AS qty,
   CAST(amt AS FLOAT64) AS amt
-FROM `Chat_Bot_Invoice_Line_Items` i, c, win
+FROM `knoxx-foods-451311.TempTest.Chat_Bot_Invoice_Line_Items` i, c, win
 WHERE LOWER(i.customername) = c.cname
   AND i.txndate >= win.start_dt
 ORDER BY txndate DESC
@@ -97,7 +97,7 @@ Returns all invoice line items for a product within a lookback window.
 ```sql
 WITH p AS (
   SELECT LOWER(REGEXP_REPLACE(Product, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) AS pnorm
-  FROM `Chat_Bot_Products`
+  FROM `knoxx-foods-451311.TempTest.Chat_Bot_Products`
   WHERE CAST(Id AS STRING) = CAST(@product_id AS STRING)
 ),
 win AS (
@@ -111,7 +111,7 @@ SELECT
   CAST(unitprice AS FLOAT64) AS unitprice,
   CAST(qty AS FLOAT64) AS qty,
   CAST(amt AS FLOAT64) AS amt
-FROM `Chat_Bot_Invoice_Line_Items` i, p, win
+FROM `knoxx-foods-451311.TempTest.Chat_Bot_Invoice_Line_Items` i, p, win
 WHERE LOWER(REGEXP_REPLACE(i.itemname, r'3\s*[*x]\s*3(\s*kg)?', '3x3')) LIKE CONCAT('%', p.pnorm, '%')
   AND i.txndate >= win.start_dt
 ORDER BY txndate DESC
