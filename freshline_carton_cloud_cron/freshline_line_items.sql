@@ -1,7 +1,7 @@
 WITH line_items AS (
 	SELECT *
 	FROM Knoxx_Freshline.freshline_order_line_items
-	WHERE order_id = ''
+	WHERE order_id = '{{=gives["351896132"]["old"]["data"]["f2"]}}'
 	QUALIFY ROW_NUMBER() OVER(PARTITION BY id ORDER BY updated_at DESC) = 1
 )
 
