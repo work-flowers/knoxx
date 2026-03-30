@@ -1,0 +1,135 @@
+erDiagram
+    Customers {
+        text name
+        select status
+        number net_terms
+        text billing_address_line1
+        text billing_address_line2
+        text billing_address_city
+        text billing_address_region
+        text billing_address_postal_code
+        text billing_address_country
+        text billing_contact_name
+        email billing_contact_email
+        phone billing_contact_phone
+        text qb_customer_id "from custom_data"
+        select pallet_status "from custom_data"
+        select delivery_method "from custom_data"
+        select delivery_timing "from custom_data"
+        text custom_notes "from custom_data"
+        datetime inserted_at
+    }
+
+    Contacts {
+        text first_name
+        text last_name
+        email email
+        phone phone
+        select role
+        text qb_customer_id "from custom_data"
+        text custom_notes "from custom_data"
+        datetime confirmed_at
+    }
+
+    Products {
+        text name
+        text description
+        text handle
+        select status
+        text tax_code_id
+        files images
+    }
+
+    Product_Variants {
+        text name
+        text sku
+        text case_size
+        text unit
+        text masked_case_size
+        text masked_unit
+        number lead_days
+        text vendor_id
+        text qb_item_id "from custom_data"
+    }
+
+    Locations {
+        text name
+        text address_line1
+        text address_line2
+        text address_line3
+        text city
+        text region
+        text region_code
+        text country
+        text country_code
+        text postal_code
+        number latitude "geocoded for ORS"
+        number longitude "geocoded for ORS"
+    }
+
+    Orders {
+        text order_number
+        select state "opened/confirmed/completed/cancelled"
+        date fulfillment_date
+        select fulfillment_type
+        number net_terms
+        number subtotal
+        number total
+        number tax
+        number fulfillment_fee
+        text cc_sales_order_id "from custom_data"
+        text qb_invoice_id "from custom_data"
+        checkbox backorder_rescheduled "from custom_data"
+        text customer_notes
+        text internal_notes
+        text invoice_notes
+        datetime opened_at
+        datetime confirmed_at
+        datetime completed_at
+        datetime cancelled_at
+    }
+
+    Customer_Pricing {
+        number unit_price "extracted from FL"
+        datetime effective_from
+        text notes "e.g. promotional, contract"
+    }
+
+    Order_Line_Items {
+        number unit_quantity
+        number unit_price "auto-populated from Customer Pricing, editable"
+        number subtotal "formula: quantity x unit_price"
+        number total "formula: subtotal + tax"
+        number tax "formula: subtotal x tax_rate"
+        number tax_rate
+        number stock_cost
+        text customer_notes
+        text internal_notes
+        text invoice_notes
+    }
+
+    Order_Fee_Items {
+        select type
+        text description
+        number price
+        number percentage
+        number base_price
+        number min_price
+        number max_price
+        number subtotal
+        number total
+        number tax
+        number tax_rate
+    }
+
+    Customers ||--o{ Contacts : "has"
+    Customers ||--o{ Orders : "places"
+    Customers ||--o{ Locations : "delivers to"
+    Customers ||--o{ Customer_Pricing : "has prices"
+    Contacts ||--o{ Orders : "placed by"
+    Locations ||--o{ Orders : "delivered to"
+    Orders ||--o{ Order_Line_Items : "contains"
+    Orders ||--o{ Order_Fee_Items : "has fees"
+    Products ||--o{ Product_Variants : "has variants"
+    Product_Variants ||--o{ Customer_Pricing : "priced for"
+    Product_Variants ||--o{ Order_Line_Items : "ordered as"
