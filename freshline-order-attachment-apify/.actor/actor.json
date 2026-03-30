@@ -1,0 +1,9 @@
+{
+  "actorSpecification": 1,
+  "name": "freshline-order-attachment",
+  "title": "Freshline Order Attachment",
+  "version": "1.0",
+  "description": "Attaches files to Freshline orders from provided URLs",
+  "dockerfile": "./Dockerfile",
+  "input": "./INPUT_SCHEMA.json"
+}

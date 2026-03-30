@@ -66,6 +66,9 @@ async function downloadFile(url, customName) {
     // Use custom name if provided, otherwise derive from URL
     let filename = customName || decodeURIComponent(basename(new URL(url).pathname)) || 'attachment';
 
+    // Sanitise unsafe path characters (e.g. slashes in date strings like "23/03/2026")
+    filename = filename.replace(/[/\\:*?"<>|]/g, '-');
+
     const filepath = `/tmp/${filename}`;
     await writeFile(filepath, buffer);
     log.info(`Downloaded: ${filename} (${buffer.length} bytes)`);

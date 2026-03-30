@@ -1,0 +1,41 @@
+{
+  "title": "CartonCloud Order Attachment Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "cartonCloudDocumentUrl": {
+      "title": "CartonCloud Add Document URL",
+      "type": "string",
+      "description": "Full URL to the CartonCloud Add Document page, e.g. https://app.cartoncloud.com/Knoxx_Foods/outbound-orders/{orderId}/documents/add",
+      "editor": "textfield",
+      "pattern": "^https?://.*"
+    },
+    "files": {
+      "title": "File URLs",
+      "type": "string",
+      "description": "Comma-separated list of public URLs to files to attach. Also accepts a JSON array.",
+      "editor": "textarea"
+    },
+    "names": {
+      "title": "File Names",
+      "type": "string",
+      "description": "Optional comma-separated list of filenames, matched by position to file URLs. If omitted, filenames are derived from the URLs. Also accepts a JSON array.",
+      "editor": "textarea"
+    },
+    "documentName": {
+      "title": "Document Name",
+      "type": "string",
+      "description": "The value to select in the Name dropdown. Defaults to 'Packing Confirmation'.",
+      "editor": "select",
+      "enum": ["Packing Confirmation", "Other"],
+      "default": "Packing Confirmation"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string",
+      "description": "Optional text to enter in the Description field of the document.",
+      "editor": "textarea"
+    }
+  },
+  "required": ["cartonCloudDocumentUrl", "files"]
+}

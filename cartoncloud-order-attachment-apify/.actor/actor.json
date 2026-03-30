@@ -1,0 +1,9 @@
+{
+  "actorSpecification": 1,
+  "name": "cartoncloud-order-attachment",
+  "title": "CartonCloud Order Attachment",
+  "version": "1.0",
+  "description": "Attaches files to CartonCloud sales order documents from provided URLs",
+  "dockerfile": "./Dockerfile",
+  "input": "./INPUT_SCHEMA.json"
+}

@@ -25,3 +25,8 @@ npm-debug.log*
 .idea/
 *.swp
 *.swo
+
+# Override parent .gitignore *.json exclusion for files needed by Apify
+!package.json
+!package-lock.json
+!.actor/*.json
