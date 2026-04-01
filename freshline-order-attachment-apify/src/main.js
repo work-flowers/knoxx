@@ -61,8 +61,12 @@ async function downloadFile(url, customName) {
 
     const buffer = Buffer.from(await response.arrayBuffer());
 
-    // Use custom name if provided, otherwise derive from URL
-    let filename = customName || decodeURIComponent(basename(new URL(url).pathname)) || 'attachment';
+    // Use custom name if provided, otherwise derive from URL.
+    // Zapier can pass the literal strings "null" or "undefined" when a field is empty.
+    const invalidNames = new Set(['null', 'undefined', '']);
+    let filename = (!customName || invalidNames.has(customName.toLowerCase()))
+        ? decodeURIComponent(basename(new URL(url).pathname)) || 'attachment'
+        : customName;
 
     // Sanitise unsafe path characters (e.g. slashes in date strings like "23/03/2026")
     filename = filename.replace(/[/\\:*?"<>|]/g, '-');
@@ -215,15 +219,64 @@ const crawler = new PuppeteerCrawler({
             // Wait for the form submission to complete
             await new Promise(resolve => setTimeout(resolve, 5000));
 
-            log.info('Upload completed successfully');
+            log.info('Upload button submitted, verifying attachments...');
 
-            // Step 5: Store results
+            // Step 5: Post-upload verification
+            // Scroll to the attachments section and wait for LiveView to re-render
+            await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Collect the filenames we expect to find (derive same way as downloadFile)
+            const expectedNames = files.map(({ url: fileUrl, name }) => {
+                const _invalidNames = new Set(['null', 'undefined', '']);
+                const resolved = (!name || _invalidNames.has(name.toLowerCase()))
+                    ? decodeURIComponent(basename(new URL(fileUrl).pathname)) || 'attachment'
+                    : name;
+                return resolved.replace(/[/\\:*?"<>|]/g, '-');
+            });
+
+            // Query the page for attachment links/items
+            const attachmentNames = await page.evaluate(() => {
+                // Look for links or list items inside the attachments container
+                const container = document.querySelector('[id*="attachment"], [class*="attachment"], [data-phx-component]');
+                if (!container) return [];
+                const links = container.querySelectorAll('a, li');
+                return Array.from(links).map(el => el.textContent.trim()).filter(Boolean);
+            });
+
+            log.info('Attachments found on page', { attachmentNames, expectedNames });
+
+            // Check whether each expected file appears in the attachment list
+            const missing = expectedNames.filter(
+                name => !attachmentNames.some(a => a.includes(name))
+            );
+
+            let uploadVerified = missing.length === 0;
+
+            if (!uploadVerified) {
+                log.warning('Upload verification failed — expected file(s) not found in attachments list', { missing });
+                try {
+                    const verifyScreenshot = await page.screenshot({ fullPage: true });
+                    await Actor.setValue('upload-verification-screenshot', verifyScreenshot, { contentType: 'image/png' });
+                    log.info('Verification screenshot saved as "upload-verification-screenshot"');
+                } catch (screenshotError) {
+                    log.error(`Failed to capture verification screenshot: ${screenshotError.message}`);
+                }
+            } else {
+                log.info('Upload verified — all expected files found in attachments list');
+            }
+
+            // Step 6: Store results
             const result = {
-                success: true,
+                success: uploadVerified,
                 orderUrl: freshlineOrderUrl,
                 filesUploaded: files.length,
                 files,
                 timestamp: new Date().toISOString(),
+                ...(uploadVerified ? {} : {
+                    reason: 'Upload button clicked but file not found in attachments list after re-render',
+                    missingFiles: missing,
+                }),
             };
 
             await Actor.pushData(result);
