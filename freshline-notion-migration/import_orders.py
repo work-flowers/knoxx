@@ -35,15 +35,16 @@ CSV_PATH = SCRIPT_DIR / "orders-data.csv"
 CUSTOMERS_LOOKUP_PATH = SCRIPT_DIR / "lookup-customers.json"
 CONTACTS_LOOKUP_PATH = SCRIPT_DIR / "lookup-contacts.json"
 LOG_PATH = SCRIPT_DIR / "import-orders-log.json"
+EXISTING_IDS_PATH = SCRIPT_DIR / "existing-order-ids.json"
 
 # Notion data source ID for Orders
 ORDERS_DATA_SOURCE_ID = "b04f62ec-bb3d-448b-852e-8ac82433bec1"
 
 # State mapping: Freshline state names -> Notion select option names
 STATE_MAP = {
-    "opened": "open",
+    "open": "open",
     "confirmed": "confirmed",
-    "completed": "complete",
+    "complete": "complete",
     "cancelled": "cancelled",
     "draft": "draft",
 }
@@ -250,6 +251,12 @@ def main():
     print(f"  Customers: {len(customers_map)} entries")
     print(f"  Contacts:  {len(contacts_map)} entries")
 
+    # Load existing order IDs to skip already-imported orders
+    existing_ids = {}
+    if EXISTING_IDS_PATH.exists():
+        existing_ids = load_lookup(EXISTING_IDS_PATH)
+        print(f"  Existing orders to skip: {len(existing_ids)} entries")
+
     # Load CSV
     print(f"Loading {CSV_PATH}...")
     with open(CSV_PATH, newline="", encoding="utf-8") as f:
@@ -267,11 +274,17 @@ def main():
     log = {"created": [], "customer_orphans": [], "contact_orphans": [], "errors": []}
     created_count = 0
 
+    skipped_count = 0
     for i, row in enumerate(rows):
         order_num = row.get("order_number", f"row-{i}")
         fl_order_id = row.get("freshline_order_id", "")
         fl_customer_id = row.get("customer_id", "")
         contact_email = (row.get("contact_email", "") or "").strip().lower()
+
+        # Skip already-imported orders
+        if fl_order_id and fl_order_id in existing_ids:
+            skipped_count += 1
+            continue
 
         # Resolve customer
         customer_page_id = customers_map.get(fl_customer_id)
@@ -357,14 +370,23 @@ def main():
     with open(LOG_PATH, "w") as f:
         json.dump(log, f, indent=2)
 
+    # Update existing-order-ids.json with newly created orders
+    if not args.dry_run and log["created"]:
+        for entry in log["created"]:
+            existing_ids[entry["freshline_order_id"]] = entry["notion_page_id"]
+        with open(EXISTING_IDS_PATH, "w") as f:
+            json.dump(existing_ids, f, indent=2)
+        print(f"  Updated {EXISTING_IDS_PATH} ({len(existing_ids)} total entries)")
+
     # Summary
     print(f"\n{'='*60}")
     print(f"Import complete {'(DRY RUN)' if args.dry_run else ''}")
-    print(f"  Created:          {created_count}")
-    print(f"  Customer orphans: {len(log['customer_orphans'])}")
-    print(f"  Contact orphans:  {len(log['contact_orphans'])}")
-    print(f"  Errors:           {len(log['errors'])}")
-    print(f"  Log saved to:     {LOG_PATH}")
+    print(f"  Skipped (existing): {skipped_count}")
+    print(f"  Created:            {created_count}")
+    print(f"  Customer orphans:   {len(log['customer_orphans'])}")
+    print(f"  Contact orphans:    {len(log['contact_orphans'])}")
+    print(f"  Errors:             {len(log['errors'])}")
+    print(f"  Log saved to:       {LOG_PATH}")
 
 
 if __name__ == "__main__":
