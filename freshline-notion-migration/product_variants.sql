@@ -10,13 +10,12 @@ p AS (
 )
 
 SELECT
-	pv.id AS variant_id,
-	pv.product_id,
+	pv.id AS freshline_variant_id,
+	pv.product_id AS freshline_product_id,
 	pv.sku,
 	pv.case_size,
 	pv.unit,
-	pv.name AS variant_name,
-	p.name AS product_name,
+	pv.name AS product_name,
 	p.description AS product_desc,
 	p.status,
 	ARRAY_TO_STRING(p.image_urls, ', ') AS image_urls
