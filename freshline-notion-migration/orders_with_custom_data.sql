@@ -9,21 +9,21 @@ WITH orders AS (
 ),
 
 cd_cc_sales_order AS (
-  SELECT owner_id, TRIM(STRING(value), '"') AS cc_sales_order_id
+  SELECT owner_id, JSON_VALUE(value) AS cc_sales_order_id
   FROM Knoxx_Freshline.freshline_custom_data
   WHERE type = 'order' AND key = 'carton-cloud-sales-order-id'
   QUALIFY ROW_NUMBER() OVER (PARTITION BY owner_id ORDER BY updated_at DESC) = 1
 ),
 
 cd_qb_invoice AS (
-  SELECT owner_id, TRIM(STRING(value), '"') AS qb_invoice_id
+  SELECT owner_id, JSON_VALUE(value) AS qb_invoice_id
   FROM Knoxx_Freshline.freshline_custom_data
   WHERE type = 'order' AND key = 'quickbooksonline_invoice_id'
   QUALIFY ROW_NUMBER() OVER (PARTITION BY owner_id ORDER BY updated_at DESC) = 1
 ),
 
 cd_backorder AS (
-  SELECT owner_id, TRIM(STRING(value), '"') AS backorder_rescheduled
+  SELECT owner_id, JSON_VALUE(value) AS backorder_rescheduled
   FROM Knoxx_Freshline.freshline_custom_data
   WHERE type = 'order' AND key = 'backorder-rescheduled'
   QUALIFY ROW_NUMBER() OVER (PARTITION BY owner_id ORDER BY updated_at DESC) = 1
