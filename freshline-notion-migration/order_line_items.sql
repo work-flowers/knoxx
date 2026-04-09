@@ -1,6 +1,17 @@
 -- Freshline order line items deduplicated to latest version
 -- For Notion migration: one row per unique line item with FKs for relation resolution
 -- Source: Knoxx_Freshline dataset in BigQuery (knoxx-foods-451311)
+--
+-- Ghost line item filter: li.synced_at >= o.updated_at
+-- When a line item is removed from an order in Freshline, the order's updated_at
+-- advances but the deleted line item is never re-synced. So any line item whose
+-- synced_at is older than its parent order's updated_at is a ghost (removed).
+
+WITH orders AS (
+  SELECT id, updated_at
+  FROM Knoxx_Freshline.freshline_orders
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1
+)
 
 SELECT
   li.id AS freshline_line_item_id,
@@ -25,5 +36,7 @@ SELECT
   li.internal_notes,
   li.invoice_notes
 FROM Knoxx_Freshline.freshline_order_line_items li
-QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1
+JOIN orders o ON li.order_id = o.id
+WHERE li.synced_at >= o.updated_at
+QUALIFY ROW_NUMBER() OVER (PARTITION BY li.id ORDER BY li.updated_at DESC) = 1
 ORDER BY li.order_id, li.variant_sku
