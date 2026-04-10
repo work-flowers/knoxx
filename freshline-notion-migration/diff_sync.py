@@ -7,14 +7,17 @@ scheduled task agent uses to drive Notion MCP create/update/archive calls.
 
 Usage:
     python diff_sync.py \
-        --orders-bq   /path/to/orders_bq_result.json \
-        --lineitems-bq /path/to/lineitems_bq_result.json
+        --orders-bq    /path/to/orders_bq_result.json \
+        --lineitems-bq /path/to/lineitems_bq_result.json \
+        --feeitems-bq  /path/to/feeitems_bq_result.json
 
 Inputs (read from script directory):
     orders-data.csv              Previous BQ extract (baseline)
     order-line-items-data.csv    Previous BQ extract (baseline)
+    order-fee-items-data.csv     Previous BQ extract (baseline)
     existing-order-ids.json      freshline_order_id -> Notion page_id
     existing-line-item-ids.json  freshline_line_item_id -> Notion page_id
+    existing-fee-item-ids.json   freshline_fee_item_id -> Notion page_id
     lookup-customers.json        freshline_customer_id -> Notion page_id
     lookup-contacts.json         contact_email -> {page_id, name}
     lookup-products.json         freshline_variant_id -> Notion page_id
@@ -25,9 +28,12 @@ Outputs (written to script directory):
     sync-new-line-items.json     New line items to create
     sync-updated-line-items.json Changed line items to patch
     sync-ghost-line-items.json   Ghost LIs to archive (removed in FL)
+    sync-new-fee-items.json      New fee items to create
+    sync-updated-fee-items.json  Changed fee items to patch
     sync-summary.json            Counts and details for reporting
     orders-data.csv              Overwritten with fresh BQ data
     order-line-items-data.csv    Overwritten with fresh BQ data
+    order-fee-items-data.csv     Overwritten with fresh BQ data
 """
 
 import argparse
@@ -44,8 +50,10 @@ SCRIPT_DIR = Path(__file__).parent
 # ---------------------------------------------------------------------------
 ORDERS_CSV = SCRIPT_DIR / "orders-data.csv"
 LINE_ITEMS_CSV = SCRIPT_DIR / "order-line-items-data.csv"
+FEE_ITEMS_CSV = SCRIPT_DIR / "order-fee-items-data.csv"
 EXISTING_ORDER_IDS = SCRIPT_DIR / "existing-order-ids.json"
 EXISTING_LI_IDS = SCRIPT_DIR / "existing-line-item-ids.json"
+EXISTING_FI_IDS = SCRIPT_DIR / "existing-fee-item-ids.json"
 LOOKUP_CUSTOMERS = SCRIPT_DIR / "lookup-customers.json"
 LOOKUP_CONTACTS = SCRIPT_DIR / "lookup-contacts.json"
 LOOKUP_PRODUCTS = SCRIPT_DIR / "lookup-products.json"
@@ -56,6 +64,8 @@ OUT_UPDATED_ORDERS = SCRIPT_DIR / "sync-updated-orders.json"
 OUT_NEW_LI = SCRIPT_DIR / "sync-new-line-items.json"
 OUT_UPDATED_LI = SCRIPT_DIR / "sync-updated-line-items.json"
 OUT_GHOSTS = SCRIPT_DIR / "sync-ghost-line-items.json"
+OUT_NEW_FI = SCRIPT_DIR / "sync-new-fee-items.json"
+OUT_UPDATED_FI = SCRIPT_DIR / "sync-updated-fee-items.json"
 OUT_SUMMARY = SCRIPT_DIR / "sync-summary.json"
 
 # ---------------------------------------------------------------------------
@@ -76,6 +86,10 @@ LI_COMPARE_FIELDS = [
     "variant_unit", "unit_quantity", "unit_price", "subtotal", "total",
     "tax", "tax_rate", "stock_cost", "price_rule_type", "price_rule_value",
     "customer_notes", "internal_notes", "invoice_notes",
+]
+
+FI_COMPARE_FIELDS = [
+    "type", "description", "amount", "percentage",
 ]
 
 
@@ -219,6 +233,10 @@ def main():
         "--lineitems-bq", required=True,
         help="Path to BQ line items JSON result file"
     )
+    parser.add_argument(
+        "--feeitems-bq", required=True,
+        help="Path to BQ fee items JSON result file"
+    )
     args = parser.parse_args()
 
     # -----------------------------------------------------------------------
@@ -227,19 +245,25 @@ def main():
     print("Loading BQ results...")
     fresh_orders = parse_bq_json(Path(args.orders_bq))
     fresh_li = parse_bq_json(Path(args.lineitems_bq))
+    fresh_fi = parse_bq_json(Path(args.feeitems_bq))
     print(f"  Orders from BQ:     {len(fresh_orders)}")
     print(f"  Line items from BQ: {len(fresh_li)}")
+    print(f"  Fee items from BQ:  {len(fresh_fi)}")
 
     print("Loading baselines...")
     old_orders = load_csv_keyed(ORDERS_CSV, "freshline_order_id")
     old_li = load_csv_keyed(LINE_ITEMS_CSV, "freshline_line_item_id")
+    old_fi = load_csv_keyed(FEE_ITEMS_CSV, "freshline_fee_item_id")
     print(f"  Baseline orders:     {len(old_orders)}")
     print(f"  Baseline line items: {len(old_li)}")
+    print(f"  Baseline fee items:  {len(old_fi)}")
 
     existing_order_ids = load_json(EXISTING_ORDER_IDS)
     existing_li_ids = load_json(EXISTING_LI_IDS)
+    existing_fi_ids = load_json(EXISTING_FI_IDS)
     print(f"  Existing order IDs:  {len(existing_order_ids)}")
     print(f"  Existing LI IDs:     {len(existing_li_ids)}")
+    print(f"  Existing FI IDs:     {len(existing_fi_ids)}")
 
     # Load lookup maps (included in new record output for relation resolution)
     customers_map = load_json(LOOKUP_CUSTOMERS)
@@ -302,6 +326,23 @@ def main():
     print(f"  Ghosts to archive: {len(ghost_lis)}")
 
     # -----------------------------------------------------------------------
+    # Diff fee items
+    # -----------------------------------------------------------------------
+    print("\nDiffing fee items...")
+    new_fi, updated_fi, unchanged_fi = diff_records(
+        fresh_fi, old_fi, existing_fi_ids,
+        "freshline_fee_item_id", FI_COMPARE_FIELDS,
+    )
+    print(f"  New:       {len(new_fi)}")
+    print(f"  Updated:   {len(updated_fi)}")
+    print(f"  Unchanged: {unchanged_fi}")
+
+    # Enrich new fee items with order relation page IDs
+    for fi in new_fi:
+        order_id = str(fi.get("freshline_order_id", ""))
+        fi["_order_page_id"] = existing_order_ids.get(order_id)
+
+    # -----------------------------------------------------------------------
     # Write outputs
     # -----------------------------------------------------------------------
     print("\nWriting output files...")
@@ -310,6 +351,8 @@ def main():
     save_json(OUT_NEW_LI, new_li)
     save_json(OUT_UPDATED_LI, updated_li)
     save_json(OUT_GHOSTS, ghost_lis)
+    save_json(OUT_NEW_FI, new_fi)
+    save_json(OUT_UPDATED_FI, updated_fi)
 
     # Summary
     summary = {
@@ -325,6 +368,12 @@ def main():
             "updated": len(updated_li),
             "unchanged": unchanged_li,
             "ghosts": len(ghost_lis),
+        },
+        "fee_items": {
+            "total_in_bq": len(fresh_fi),
+            "new": len(new_fi),
+            "updated": len(updated_fi),
+            "unchanged": unchanged_fi,
         },
         "updated_order_details": [
             {
@@ -342,6 +391,14 @@ def main():
             }
             for li in updated_li
         ],
+        "updated_fi_details": [
+            {
+                "freshline_fee_item_id": fi.get("freshline_fee_item_id", ""),
+                "description": fi.get("description", ""),
+                "changed_fields": fi.get("changed_fields", []),
+            }
+            for fi in updated_fi
+        ],
     }
     save_json(OUT_SUMMARY, summary)
 
@@ -351,6 +408,7 @@ def main():
     print("Updating baseline CSVs...")
     save_csv(ORDERS_CSV, fresh_orders)
     save_csv(LINE_ITEMS_CSV, fresh_li)
+    save_csv(FEE_ITEMS_CSV, fresh_fi)
 
     # -----------------------------------------------------------------------
     # Print summary
@@ -359,6 +417,7 @@ def main():
     print("Diff complete")
     print(f"  Orders:     {len(new_orders)} new, {len(updated_orders)} updated, {unchanged_orders} unchanged")
     print(f"  Line items: {len(new_li)} new, {len(updated_li)} updated, {unchanged_li} unchanged, {len(ghost_lis)} ghosts")
+    print(f"  Fee items:  {len(new_fi)} new, {len(updated_fi)} updated, {unchanged_fi} unchanged")
 
     if updated_orders:
         print("\n  Updated orders:")
