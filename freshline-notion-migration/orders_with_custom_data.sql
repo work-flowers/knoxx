@@ -1,5 +1,6 @@
 -- Freshline orders with custom data fields pivoted into columns
--- For Notion migration: deduplicated to latest version per order
+-- For Notion migration and daily sync: deduplicated to latest version per order
+-- Datetime fields formatted as ISO 8601 with AEST offset for Notion date properties
 -- Source: Knoxx_Freshline dataset in BigQuery (knoxx-foods-451311)
 
 WITH orders AS (
@@ -57,10 +58,10 @@ SELECT
   o.internal_notes,
   o.invoice_notes,
   o.line_items_count,
-  o.opened_at,
-  o.confirmed_at,
-  o.completed_at,
-  o.cancelled_at,
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%S+11:00', o.opened_at, 'Australia/Sydney') AS opened_at_datetime,
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%S+11:00', o.confirmed_at, 'Australia/Sydney') AS confirmed_at_datetime,
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%S+11:00', o.completed_at, 'Australia/Sydney') AS completed_at_datetime,
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%S+11:00', o.cancelled_at, 'Australia/Sydney') AS cancelled_at_datetime,
   cd_cc.cc_sales_order_id,
   cd_qb.qb_invoice_id,
   CASE WHEN cd_bo.backorder_rescheduled = 'true' THEN TRUE ELSE FALSE END AS backorder_rescheduled
