@@ -26,7 +26,7 @@ li_filtered AS (
   FROM Knoxx_Freshline.freshline_order_line_items li
   JOIN orders o ON li.order_id = o.id
   WHERE li.synced_at >= o.updated_at
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY li.id ORDER BY li.updated_at DESC) = 1
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY li.id ORDER BY li.synced_at DESC) = 1
 ),
 
 li_all_totals AS (
@@ -68,7 +68,7 @@ li_filtered AS (
   FROM Knoxx_Freshline.freshline_order_line_items li
   JOIN orders o ON li.order_id = o.id
   WHERE li.synced_at >= o.updated_at
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY li.id ORDER BY li.updated_at DESC) = 1
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY li.id ORDER BY li.synced_at DESC) = 1
 )
 
 SELECT

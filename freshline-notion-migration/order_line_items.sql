@@ -6,6 +6,14 @@
 -- When a line item is removed from an order in Freshline, the order's updated_at
 -- advances but the deleted line item is never re-synced. So any line item whose
 -- synced_at is older than its parent order's updated_at is a ghost (removed).
+--
+-- IMPORTANT: Line items must be deduped by synced_at DESC, not updated_at DESC.
+-- When an order is updated (state change, edits, etc.), Freshline re-syncs ALL
+-- surviving line items with fresh synced_at values — but their updated_at only
+-- changes if the line item content itself was edited. Deduping by updated_at DESC
+-- is non-deterministic when multiple synced rows share the same updated_at, and
+-- may pick a stale row whose synced_at predates the order's updated_at, causing
+-- a false ghost-positive. (Credit: Sai identified this behaviour, 2026-04-10.)
 
 WITH orders AS (
   SELECT id, updated_at
@@ -38,5 +46,5 @@ SELECT
 FROM Knoxx_Freshline.freshline_order_line_items li
 JOIN orders o ON li.order_id = o.id
 WHERE li.synced_at >= o.updated_at
-QUALIFY ROW_NUMBER() OVER (PARTITION BY li.id ORDER BY li.updated_at DESC) = 1
+QUALIFY ROW_NUMBER() OVER (PARTITION BY li.id ORDER BY li.synced_at DESC) = 1
 ORDER BY li.order_id, li.variant_sku
