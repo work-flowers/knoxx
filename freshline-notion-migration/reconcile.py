@@ -126,12 +126,11 @@ def extract_date_start(prop: dict) -> str:
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
-def load_bq_orders(month_start: str, month_end: str, include_states: set | None) -> dict:
-    """Load orders from BQ baseline CSV, filtered by opened_at month (AEST).
+def load_bq_orders(month_start: str, month_end: str, include_states: set | None,
+                   date_field: str = "opened_at") -> dict:
+    """Load orders from BQ baseline CSV, filtered by date field and month.
 
-    The CSV stores opened_at_datetime as ISO 8601 with AEST offset
-    (e.g. 2026-02-25T16:14:00+11:00). We extract the date portion.
-
+    date_field can be 'opened_at' (default) or 'fulfilment_date'.
     Returns dict keyed by freshline_order_id.
     """
     orders = {}
@@ -150,18 +149,21 @@ def load_bq_orders(month_start: str, month_end: str, include_states: set | None)
             elif state in CANCELLED_STATES:
                 continue
 
-            # Filter by opened_at month
-            opened_at = row.get("opened_at_datetime", "")
-            if not opened_at:
-                # Orders missing opened_at — include if fulfillment_date is in range
+            # Filter by chosen date field
+            if date_field == "fulfilment_date":
                 fdate = row.get("fulfillment_date", "")
                 if not (fdate and fdate >= month_start and fdate < month_end):
                     continue
             else:
-                # Extract date from ISO datetime (YYYY-MM-DDTHH:MM:SS+11:00)
-                opened_date = opened_at[:10]
-                if not (opened_date >= month_start and opened_date < month_end):
-                    continue
+                opened_at = row.get("opened_at_datetime", "")
+                if not opened_at:
+                    fdate = row.get("fulfillment_date", "")
+                    if not (fdate and fdate >= month_start and fdate < month_end):
+                        continue
+                else:
+                    opened_date = opened_at[:10]
+                    if not (opened_date >= month_start and opened_date < month_end):
+                        continue
 
             fl_id = row.get("freshline_order_id", "")
             if fl_id:
@@ -172,7 +174,7 @@ def load_bq_orders(month_start: str, month_end: str, include_states: set | None)
                     "subtotal": safe_float(row.get("subtotal")),
                     "tax": safe_float(row.get("tax")),
                     "fulfillment_fee": safe_float(row.get("fulfillment_fee")),
-                    "opened_at": opened_at,
+                    "opened_at": row.get("opened_at_datetime", ""),
                 }
     return orders
 
@@ -181,12 +183,14 @@ def query_notion_orders(
     notion: Client,
     month_start: str,
     month_end: str,
+    date_field: str = "opened_at",
 ) -> dict:
     """Query Notion Orders data source for the given month.
 
-    Uses data_sources.query (notion-client v3.0.0+).
+    date_field can be 'opened_at' (default) or 'fulfilment_date'.
     Returns dict keyed by freshline_order_id.
     """
+    notion_date_prop = "Fulfilment date" if date_field == "fulfilment_date" else "Opened at"
     orders = {}
     has_more = True
     start_cursor = None
@@ -197,8 +201,8 @@ def query_notion_orders(
             "data_source_id": ORDERS_DATA_SOURCE_ID,
             "filter": {
                 "and": [
-                    {"property": "Opened at", "date": {"on_or_after": month_start}},
-                    {"property": "Opened at", "date": {"before": month_end}},
+                    {"property": notion_date_prop, "date": {"on_or_after": month_start}},
+                    {"property": notion_date_prop, "date": {"before": month_end}},
                     {"property": "State", "select": {"does_not_equal": "cancelled"}},
                 ]
             },
@@ -327,6 +331,9 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Show per-order details")
     parser.add_argument("--tolerance", type=float, default=0.01, help="AUD tolerance for mismatches (default: 0.01)")
     parser.add_argument("--json-out", default=None, help="Save full report to JSON file")
+    parser.add_argument("--date-field", default="opened_at",
+                        choices=["opened_at", "fulfilment_date"],
+                        help="Date field for month filter (default: opened_at)")
     args = parser.parse_args()
 
     month_start, month_end = parse_month(args.month)
@@ -341,13 +348,13 @@ def main():
     notion = Client(auth=api_key)
 
     # Load BQ baseline
-    print(f"Loading BQ baseline for {args.month}...")
-    bq_orders = load_bq_orders(month_start, month_end, include_states)
+    print(f"Loading BQ baseline for {args.month} (date_field={args.date_field})...")
+    bq_orders = load_bq_orders(month_start, month_end, include_states, args.date_field)
     print(f"  {len(bq_orders)} orders from BQ baseline")
 
     # Query Notion
-    print(f"Querying Notion for {args.month}...")
-    notion_orders = query_notion_orders(notion, month_start, month_end)
+    print(f"Querying Notion for {args.month} (date_field={args.date_field})...")
+    notion_orders = query_notion_orders(notion, month_start, month_end, args.date_field)
 
     # Reconcile
     print("\nReconciling...")
